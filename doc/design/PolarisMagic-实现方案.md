@@ -187,20 +187,14 @@ public sealed class MagicSpellDefinition
     /// <summary>攻击数据。最多三份，对应 MDAT 建的 Atk0/Atk1/Atk2。</summary>
     public IList<MagicAttackSpec> Attacks { get; }
 
-    /// <summary>预瞄轨迹（对应 MagicNotifiear 的 MnHit 段）。必须显式给，见 §4.2。</summary>
-    public MagicNotifierSpec Notifier { get; set; }
-
     /// <summary>
     /// 行为工厂。<b>每个 MGContainer 一个实例</b>——原版 handler 会保存容器引用和对象池，
     /// 做成全局单例会跨地图串味（文档 §21.10）。
     /// </summary>
-    public Func<MagicWorld, IMagicBehavior> CreateBehavior { get; set; }
+    public Func<MagicBehavior> CreateBehavior { get; set; }
 
     /// <summary>是否允许存进玩家存档。false 时该法术只能由事件/调试授予，重启即失（见 §5.5）。</summary>
     public bool Persistable { get; set; }
-
-    /// <summary>默认选择位。</summary>
-    public MagicAimSlot PreferredSlot { get; set; }
 
     /// <summary>图标：小图标 PxlFrame 名 + 大图标下标。大图标下标没有越界保护（文档 §18.4）。</summary>
     public MagicIconSpec Icon { get; set; }
@@ -266,17 +260,7 @@ public sealed class MagicInstance
     // ── 施法者与目标 ──────────────────────────────────────────────────────
     public MagicCaster Caster { get; }
     public MagicFaction Faction { get; }     // 由 MGHIT 的 PR/EN/BERSERK 位翻译而来
-    public MagicVec3 AimPosition { get; }
     public MagicTarget LockonTarget { get; }
-
-    // ── 行为自己的状态 ────────────────────────────────────────────────────
-    /// <summary>
-    /// 行为组件挂自己状态的地方。<b>兼容层独占 MagicItem.Other</b>：文档 §21.14 列的那一串坑
-    /// （input_null_to_other_when_quit、IDisposable 与 IMagicDisposable 的优先级、ReleaseMem
-    /// 不清字段、family 的逐成员释放）在兼容层里做一次，玩法层永远碰不到它们。
-    /// 池对象复用时这里会被完整重置。
-    /// </summary>
-    public T State<T>() where T : class, new();
 
     /// <summary>逃生舱：真正的 MagicItem。用它就等于自己承担游戏版本风险（§2.2）。</summary>
     public object RawItem { get; }
@@ -293,43 +277,32 @@ public sealed class MagicInstance
 | `MagicNotifierSpec`  | `MagicNotifiear` + `MnHit`  | 纯数据模板，兼容层用 `Notf.GetForCaster(Mg, template)` 显式重载安装（文档 §21.11），不碰私有 `OMn`         |
 | `MagicKindSpec`      | `MKind` 可写字段            | 只暴露解析器真的会读的字段；`knockback_len` 不暴露（文档 §3.3：解析器没有这个分支，字段恒 0）              |
 | `MagicCaster`        | `M2MagicCaster`             | `IsPlayer` / `Center` / `AvailableMp` / `ChantSpeed`；八种法术的后半段不是玩家专用（文档 §2.6）            |
-| `MagicAimSlot`       | `MagicSelector.MAGA`        | 枚举镜像，避免下游引用游戏枚举                                                                            |
 
-### 3.4 行为契约：`IMagicBehavior`
+### 3.4 行为契约：`MagicBehavior`
+
+运行时不接收状态图，也不让作者在一个总 `OnTick` 中维护框架约定的 phase 数字。一个阶段就是一个 code-behind 回调：
 
 ```csharp
-public interface IMagicBehavior
+public delegate MagicStageResult MagicStageCallback();
+
+public readonly struct MagicStageResult
 {
-    /// <summary>正式实体第一次运行前的初始化（对应原版 handler 的 initFunc + run(0)）。</summary>
-    void OnSpawn(MagicInstance m);
+    public static MagicStageResult Stay { get; }
+    public static MagicStageResult Complete { get; }
+    public static MagicStageResult TransitionTo(MagicStageCallback next);
+}
 
-    /// <summary>每帧。返回 false 表示"这个法术结束了"，由兼容层走 kill/回收（对应 MgFDHolder.run）。</summary>
-    bool OnTick(MagicInstance m, float frameScale);
-
-    /// <summary>绘制（对应 MgFDHolder.draw）。可空实现。</summary>
-    void OnDraw(MagicInstance m, MagicEffect effect);
-
-    /// <summary>
-    /// 玩家在场上已有本法术时再次施法。默认返回 <see cref="MagicRecast.NewCast"/>（= 原版对
-    /// 未 patch 的新法术的行为，文档 §21.12）。持续场要在这里决定收回/引爆/夺取控制。
-    /// </summary>
-    MagicRecast OnRecast(MagicWorld world, MagicCaster caster);
-
-    /// <summary>
-    /// 结束。<b>对同一个 Key 只会调一次</b>——原版的 kill 没有开头的重入保护、
-    /// releasePooledObject 还会在下一代 init 里再跑一遍（文档 §21.2），幂等由兼容层保证。
-    /// </summary>
-    void OnEnd(MagicInstance m, MagicEndReason reason);
-
-    /// <summary>玩家离开地图（对应 IMgMemDeactivatingMapListener.deactivateMap）。决定退款语义。</summary>
-    void OnMapDeactivating(MagicInstance m, bool mapDeactivating);
+public abstract class MagicBehavior
+{
+    protected MagicRuntimeContext Context { get; }
+    protected abstract MagicStageCallback CreateInitialStage();
+    protected virtual void OnDispose(MagicEndReason reason) { }
 }
 ```
 
-> **本文推断。** `OnEnd` 的幂等、`OnRecast` 的默认值、`State<T>` 的重置，都是把《魔法文档》
-> §21.14 和 §23.3（9)(14) 里"必须只发生一次"的要求做成类型层面的保证，而不是写在文档里请
-> 作者自觉。理由和 `LocalizationAPI.Resolve` 接住 resolver 异常一样
-> （`Localization/LocalizationAPI.cs:160-171`）：一个下游写坏，不该连累别人。
+每个 Tick 只调用一次当前回调。`Stay` 留在当前阶段，`TransitionTo` 在下个 Tick 切入目标回调，`Complete` 正常结束。分支、中断、循环与共享状态全部使用普通 C# 和 behavior 实例字段。最终清理保持幂等，`OnDispose` 对同一实例只调用一次。
+
+再次施法、绘制和地图退出仍由 holder/兼容层事件进入，但它们不组成另一套阶段图；需要影响运行流程时，只设置实例请求或由下一次阶段回调读取 code-behind 字段。
 
 ### 3.5 事件
 
@@ -400,7 +373,7 @@ public sealed class MagicEvents
    普通魔法费用 64、Burst 128，文档 §3.2 末）。
 
 准备态**不装**正式 handler——`MagicItem.init` 随后会给它装通用 `runMagicCircle`（文档 §21.7）。
-兼容层因此需要两条初始化路径，`IMagicBehavior.OnSpawn` 只在正式态调用。
+兼容层因此需要两条初始化路径；只有正式态才创建 `MagicBehavior`、绑定 Context 并取得首阶段回调。
 
 ### 4.3 补丁的延迟安装
 
@@ -446,7 +419,7 @@ internal static class MagicPatchInstaller
 | 缺 `Notifier` 或缺 `CreateBehavior`                 | 会在游戏中段（第一次施法）才炸，那时玩家已经存过档了                |
 | 咏唱法术（`casttime > 0`）缺准备态或正式态之一的数据 | 文档 §21.7：准备圆不工作 或 正式 handler 提前跑                     |
 | 大图标下标越界                                      | 文档 §18.4：大图标访问没有可靠的越界保护                            |
-| 同一个法术登记两次不同 ID / 同一 aim 重复占位        | 文档 §20.1：`fineCurrentSelection` 的结果会受字典枚举顺序影响       |
+| 同一个法术登记两次不同 ID / 同一选择位重复占用       | 文档 §20.1：`fineCurrentSelection` 的结果会受字典枚举顺序影响       |
 
 致命错误的 `FatalText`（三语）要按 `PlangConflictGuard` 的写法给出**玩家能执行的动作**：
 "在标题画面 Polaris 页里只留一个" + "把报告交给作者，必须有一方改 ID"。
@@ -504,24 +477,23 @@ Polaris/PolarisMagic/
   Plugin.cs                    BepInPlugin + IPolarisModule，照 PolarisRes/Plugin.cs 的两段式
   PolarisMagicAPI.cs           静态门面（法术作者的唯一入口）
   MagicStrings.cs              设置项/UI 文案，Awake 里 Register（时机理由同 ResStrings）
-  Authoring/                   作者层：定义、校验、DSL
-    SpellDefinition.cs         PolarisMagic 自己的法术定义（比兼容层的 MagicSpellDefinition 高一层）
-    SpellBuilder.cs            链式 DSL
-    PolarisSpellAttribute.cs   特性轨自动注册（照 PUIAutoRegistration / PlangAutoRegistration）
-    SpellFile*.cs              .pmagic 数据文件解析（M8）
-    SpellValidator.cs          编译期/启动期校验，产出人类可读的错误
-  Behaviors/                   行为组件库：玩法词汇
-    ProjectileBehavior.cs      直射弹（白箭/火球那一类）
-    FieldBehavior.cs           持续场（黑洞/花环那一类）
-    OrbitBehavior.cs           环绕体 + 逐个射出（水晶那一类）
-    BeamBehavior.cs            蓄能转光束（雷电那一类）
-    TrapBehavior.cs            投放型（地雷那一类）
-    Steps/                     可组合的小步骤：Move / Home / Expand / DecayByDistance / ClipByWall …
+  Authoring/                   作者层：.pmagic 定义、校验与代码生成
+    MagicDefinitionDocument.cs 构建期 XML 模型
+    MagicDefinitionParser.cs   安全、封闭格式解析
+    MagicDefinitionValidator.cs 静态参数校验
+    MagicCodeGenerator.cs      生成 partial behavior、工厂和 provider
+  Definitions/
+    MagicDefinition.cs         静态参数 + behavior 工厂
+    MagicDefinitionBuilder.cs  生成代码使用的封存构建器
   Runtime/
-    MagicRuntime.cs            Init：登记 → 交给 PolarisAPI.Magic.Registry
-    SpellRegistrar.cs          把 SpellDefinition 翻成 MagicSpellDefinition
+    MagicBehavior.cs           code-behind 基类
+    MagicStageCallback.cs      阶段委托
+    MagicStageResult.cs        Stay / Transition / Complete
+    MagicRuntimeContext.cs     单次施法上下文
+    MagicRuntimeInstance.cs    当前回调与阶段激活序号
+    MagicRegistrar.cs          把 MagicDefinition 翻成 MagicSpellDefinition
     IdAllocator.cs             ID 段管理与冲突前置检查（真正的致命判定在 PolarisBasic）
-    SaveMigration.cs           LegacyIds / 版本迁移表
+    Steps/                     可选 C# 辅助方法：Move / Home / Expand / ClipByWall …
   Presentation/
     SpellResources.cs          PolarisRes 素材接线（图标 PXLS、贴图）
     ParticleBridge.cs          EfParticleManager.addAdditionalFile 的调用面（经 PolarisBasic）
@@ -530,7 +502,8 @@ Polaris/PolarisMagic/
     MagicInspector.cs          调试 HUD（PolarisUI），显示活动法术的 §23.4 字段
     MagicTraceLog.cs           结构化日志，按 kind 过滤，默认关
   Samples/
-    SampleSpells.cs            示例法术（见 §5.6）
+    IceLance.pmagic.cs         回调阶段示例（见 §5.6）
+    WardCircle.pmagic.cs       持续场与清理示例
   Libs/                        PolarisBasic.dll 等（不进版本库，由 deploy 脚本同步）
   polaris_magic_icon.png
   README.md
@@ -542,66 +515,67 @@ Polaris/PolarisMagic/
 
 ### 5.2 两层定义的分工
 
-会有人问：兼容层已经有 `MagicSpellDefinition` 了，PolarisMagic 为什么还要一个
-`SpellDefinition`？因为两者的服务对象不同：
+兼容层的 `MagicSpellDefinition` 与作者侧生成的 `MagicDefinition` 服务对象不同：
 
-| | 兼容层 `MagicSpellDefinition` | 玩法层 `SpellDefinition` |
+| | 兼容层 `MagicSpellDefinition` | 作者层 `MagicDefinition` |
 | --- | --- | --- |
 | 服务对象 | 兼容层自己（要往 MKind/MDAT/OHoldFD 里塞的东西） | 法术作者 |
-| 字段粒度 | 和游戏结构一一对应（三份 Atk、Notifier 段、图标下标） | 玩法语义（"伤害""咏唱时长""飞行速度""爆炸半径"） |
+| 字段粒度 | 和游戏结构一一对应 | `.pmagic` 静态参数、字符串 Id 与 behavior 工厂 |
 | 变化原因 | 游戏版本 | 玩法设计 |
-| 举例 | `Attacks[0].HpDamage = 64` | `Damage = 64`（由模板决定它落到哪份 Atk） |
+| 运行流程 | holder 接入与原版对象重置 | code-behind 阶段回调 |
 
-`SpellRegistrar` 是这两者之间唯一的翻译点。作者写错了，错误信息由 `SpellValidator` 用玩法
-词汇给出（"火球的爆炸半径必须大于 0"），而不是抛出一句 "Atk1 is null"。
+`MagicRegistrar` 是两者之间唯一的翻译点。攻击、Notifier 和表现不作为作者定义字段翻译，
+而是在阶段回调中通过运行时 facade 显式创建。
 
 ### 5.3 作者接口草案
 
+作者接口固定为 `.pmagic` 静态定义加同名 code-behind，不再提供状态图或链式玩法 DSL：
+
 ```csharp
-// 代码轨（推荐）：链式 DSL
-[PolarisSpell]                       // 特性轨自动发现，照 PUIAutoRegistrationAttribute
-public static class MySpells
+internal sealed partial class IceLance
 {
-    public static SpellDefinition IceLance => Spell.Projectile("mymod.ice_lance")
-        .Id(30001)                                  // 显式、稳定、可迁移；不自动分配
-        .Title("&mymod.spell.ice_lance.title")      // & 前缀 = 走 Polaris 本地化（同设置项写法）
-        .Cost(mp: 38, castTime: 40, prepareTime: 18)
-        .Crystalize(0.6f, neutral: 0.2f)
-        .Damage(hp: 55, mpSplit: 6)
-        .Speed(2.4f).Lifetime(90)
-        .OnWallHit(Reaction.Stick(60))
-        .Icon(small: "ice_lance", large: LargeIcon.Reuse(1))
-        .Slot(MagicAimSlot.T_R)
-        .Persistable(true)
-        .Build();
+    private float age;
+
+    protected override MagicStageCallback CreateInitialStage() => Prepare;
+
+    private MagicStageResult Prepare()
+    {
+        // 创建攻击并保存本次施法状态。
+        return MagicStageResult.TransitionTo(Fly);
+    }
+
+    private MagicStageResult Fly()
+    {
+        age += Context.DeltaFrames;
+        return age < 90f
+            ? MagicStageResult.Stay
+            : MagicStageResult.Complete;
+    }
 }
 ```
 
-```csharp
-// 数据轨（M8）：.pmagic 文件，给不写 C# 的作者
-// 与 .plang 同一套思路：文件是数据，代码生成/运行时解析都由 Polaris 侧负责
-id            = 30001
-template      = projectile
-title         = &mymod.spell.ice_lance.title
-mp            = 38
-casttime      = 40
-damage_hp     = 55
-speed         = 2.4
-wall_reaction = stick:60
-```
+`.pmagic` 只保存 MKind 静态参数；生成文件只负责 partial 类型、只读静态属性、behavior 工厂和注册。攻击、速度、命中、表现、分支和阶段转移全部在上述 `.pmagic.cs` 中完成。
 
 ### 5.4 行为组件库怎么组织
 
-不做"通用弹体模板 + 一堆开关"——《魔法文档》§0 已经说明八种原版法术**不共用**一套简单弹体
-模板（一个是共享 family 的八颗水晶，一个是带全局吸力监听器的场）。所以按**五个模板类 + 可
-组合步骤**组织：模板负责生命周期骨架，步骤负责每帧要做的一件事。
+不做“通用弹体模板 + 一堆开关”——《魔法文档》§0 已经说明八种原版法术不共用一套简单弹体
+模板（一个是共享 family 的八颗水晶，一个是带全局吸力监听器的场）。可复用能力做成由阶段回调
+主动调用的小步骤；阶段划分和转移仍留在各自 code-behind 中，组件库不建立隐藏的第二套状态机。
 
 ```csharp
-public sealed class ProjectileBehavior : IMagicBehavior
+internal sealed partial class ProjectileBehavior
 {
-    // phase 语义由模板固定，作者只填步骤和反应
-    //   0 成形 → 1 就绪 → 2 飞行 → 3 飞行后段 → 4 命中/黏附 → 结束
-    public bool OnTick(MagicInstance m, float fcnt) => phase switch { ... };
+    protected override MagicStageCallback CreateInitialStage() => Form;
+
+    private MagicStageResult Form() => MagicStageResult.TransitionTo(Fly);
+
+    private MagicStageResult Fly()
+    {
+        MoveLinear(Context.Self, Context.DeltaFrames);
+        return HitSomething()
+            ? MagicStageResult.TransitionTo(Impact)
+            : MagicStageResult.Stay;
+    }
 }
 ```
 
@@ -610,12 +584,12 @@ public sealed class ProjectileBehavior : IMagicBehavior
 | 步骤                  | 对应原版           | 备注                                                            |
 | --------------------- | ------------------ | --------------------------------------------------------------- |
 | `MoveLinear`          | 白箭飞行           |                                                                 |
-| `HomeToAim`           | 火球三次转向       | 玩家转向，不是自动追踪                                          |
+| `TurnFromInput`       | 火球三次转向       | 通过通用输入 API 读取玩家方向，不提供专用 Aim 抽象               |
 | `DecayByDistance`     | 火球距离衰减       | 文档 §9.1 的 10.5 / 16.5 图格档位                               |
 | `ClipByObstacle`      | 火球障碍裁剪       |                                                                 |
 | `ExpandQuartic`       | 威力炸弹四次方扩张 |                                                                 |
 | `DecelerateThenBurst` | 雷球 → 光束        |                                                                 |
-| `OrbitAndLaunch`      | 水晶               | 需要 family 语义：多个实例共享一份状态，兼容层的 `State<T>` 要支持共享作用域 |
+| `OrbitAndLaunch`      | 水晶               | 需要 family 语义：共享对象由 code-behind 显式持有并在 OnDispose 释放 |
 | `AttractMovers`       | 黑洞吸力           | 注意文档 §22："连续倍率只用于 >0 判断，实际位移固定约 0.07"      |
 | `TransferMpToCaster`  | 花环               | 它不是直接治疗，是加速已有 GaugeSaver（文档 §15.3）              |
 | `RefundManaPortion`   | 白箭发射时 66%     | 文档 §8.4：只改结尾会漏掉先行返还                               |
@@ -685,7 +659,7 @@ sequenceDiagram
     Note over Basic: ctor Postfix：注入 handler、建 MagicWorld
     Game->>Basic: MGContainer.setMagic(自定义 kind)
     Basic->>Basic: MDAT.initMagicItem Prefix 接管
-    Basic->>Magic: IMagicBehavior.OnSpawn / OnTick …
+    Basic->>Magic: CreateInitialStage / 当前阶段回调
 ```
 
 **四条不能违反的先后关系**（全部来自《魔法文档》§21.13）：
@@ -708,10 +682,10 @@ sequenceDiagram
 | **M1** | 只读观察             | 补丁 3/7/8/9/10；`MagicEvents` 除 `Hit`；`MagicRuntimeKey`（spawnSerial + generation）；结构化日志      | §23.1 全部、§23.3-11                          | 能：诊断工具 |
 | **M2** | 改原版               | `VanillaMagicAPI`：MKind 覆盖层（补丁 1）+ 逐实例 Atk 覆盖（补丁 3）+ 行为钩子                          | §23.2 抽查两种法术                            | 能：一个"魔法平衡调整"模组已经可行 |
 | **M3** | ID / 名称登记        | `MagicRegistry` 校验 + `MagicRegistryGuard`（致命）+ 补丁 11（`FEnum.TryParse` 双向）                   | §23.3-2、-3、-7                               | 能           |
-| **M4** | 最小自定义法术       | 补丁 2/5；`MagicWorld`/`MagicInstance`/`IMagicBehavior`；先只做 `IMMEDIATE`（事件授予、不咏唱、不存档） | §23.3-4、-10、-12                             | 能：新法术能在游戏里飞了 |
+| **M4** | 最小自定义法术       | 补丁 2/5；`MagicRuntimeContext`/`MagicBehavior`/阶段回调；先只做 `IMMEDIATE`（事件授予、不咏唱、不存档） | §23.3-4、-10、-12                             | 能：新法术能在游戏里飞了 |
 | **M5** | 咏唱与双实例         | 准备态/正式态两条初始化路径；`ice_lance` 示例；HUD 的 hold/overhold 正确                                | §23.3-12、-13；§23.1"正常释放"                | 能           |
 | **M6** | 选择器与存档         | 补丁 12；`Persistable`；255 上限；`LegacyIds` 迁移；卸载/重装模组全流程                                 | §23.3-6、-16；§20.2                           | **建议在这里发第一个版本** |
-| **M7** | 持续场               | 补丁 4/6（再次施法 + 地图生命周期）；`SpecialMpGauge`；`ward_circle` 示例；`State<T>` 的共享作用域       | §23.3-8、-9、-14、-15、-17                    | 能           |
+| **M7** | 持续场               | 补丁 4/6（再次施法 + 地图生命周期）；`SpecialMpGauge`；`ward_circle` 示例；code-behind 显式共享对象的生命周期 | §23.3-8、-9、-14、-15、-17                    | 能           |
 | **M8** | 作者层与工具         | `.pmagic` 数据轨；`SpellValidator` 的人话错误；PolarisTools 的编辑器/代码生成（照 `.plang` 那一套）；README + API 文档；补丁 13/14 | §23.4 日志字段齐全           | 收尾         |
 
 **M0 是唯一不能跳的。** 它便宜（读代码 + 一两个日志补丁），而它的产出决定后面所有里程碑的
@@ -754,7 +728,7 @@ sequenceDiagram
 | 文档章节 | 讲什么                       | 落在本方案哪里                    |
 | -------- | ---------------------------- | --------------------------------- |
 | §2.3     | MagicItem 是池化的、id 会重用 | `MagicRuntimeKey`（§3.3）、补丁 6/7 |
-| §2.4     | `Other` 的释放顺序陷阱        | 兼容层独占 `Other`、`State<T>`（§3.3） |
+| §2.4     | `Other` 的释放顺序陷阱        | 兼容层独占 `Other`，behavior 字段由实例生命周期隔离（§3.3） |
 | §3.3     | `knockback_len` 未被解析器采用 | `MagicKindSpec` 不暴露该字段（§3.3 表） |
 | §4       | 法杖修正与初始化顺序          | `MagicInstance` 的数值只在正确阶段可写；M2 的观察项 |
 | §5.8     | `reduce_mp` 的语义切换        | 字段改名 `ManaBudget` + 注释（§3.3） |
