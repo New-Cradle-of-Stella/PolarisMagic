@@ -6,7 +6,15 @@
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
+  <!--
+    PolarisRes 是硬依赖而非软依赖：作者接口里 magicObject.AttachImage(resourceId) 的解析、
+    导入设置与纹理租约全部归 PolarisRes，中间层不自建第二套图片加载。
+    特效不依赖 PolarisParticles——精灵表特效由本模块的中间层特效服务实现（见 Runtime/MagicEffects.cs）。
+  -->
   <ItemGroup>
     <ProjectReference Include="..\PolarisCore\PolarisCore.csproj" />
+    <ProjectReference Include="..\PolarisRes\PolarisRes.csproj" />
   </ItemGroup>
+
+  <Import Project="..\PolarisCore\build\Polaris.Runtime.props" />
 </Project>
