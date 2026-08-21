@@ -34,7 +34,7 @@ namespace Polaris.Magic.Runtime
 
             try
             {
-                return PolarisResAPI.For(modId).Texture(path);
+                return ResAPI.For(modId).Texture(path);
             }
             catch (Exception ex)
             {
