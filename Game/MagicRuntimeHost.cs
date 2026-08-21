@@ -23,8 +23,6 @@ namespace Polaris.Magic.Game
         private static int nextInstanceId;
         private static int mainThreadId;
 
-        internal static int ActiveCount => Active.Count;
-
         /// <summary>记下游戏主线程。作者续体只允许在这个线程上恢复。</summary>
         internal static void Initialize()
         {

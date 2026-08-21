@@ -12,6 +12,9 @@ namespace Polaris.Magic.Runtime
     /// </summary>
     internal sealed class MagicSynchronizationContext : SynchronizationContext
     {
+        /// <summary>一个 Tick 内最多执行多少个续体。防住"续体里同步地再排一个续体"变成死循环卡死整局游戏。</summary>
+        private const int DrainBudget = 4096;
+
         private readonly object gate = new object();
         private readonly Queue<Work> pending = new Queue<Work>();
         private readonly int mainThreadId;
@@ -19,20 +22,6 @@ namespace Polaris.Magic.Runtime
         internal MagicSynchronizationContext(int mainThreadId)
         {
             this.mainThreadId = mainThreadId;
-        }
-
-        /// <summary>一个 Tick 内最多执行多少个续体。防住"续体里同步地再排一个续体"变成死循环卡死整局游戏。</summary>
-        private const int DrainBudget = 4096;
-
-        internal bool HasPending
-        {
-            get
-            {
-                lock (gate)
-                {
-                    return pending.Count > 0;
-                }
-            }
         }
 
         public override void Post(SendOrPostCallback d, object state)

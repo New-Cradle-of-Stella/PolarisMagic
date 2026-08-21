@@ -49,7 +49,10 @@ namespace Polaris.Magic.Runtime
         public uint TintArgb { get; set; }
 
         /// <summary>非循环特效是否已经播完最后一帧。</summary>
-        public bool IsFinished => !Loop && elapsedFrames >= frameCount * Math.Max(0.0001f, spec.FramesPerStep);
+        public bool IsFinished => !Loop && elapsedFrames >= frameCount * StepFrames;
+
+        /// <summary>一帧画面持续多少游戏帧。下限保证 0 或负的 <c>FramesPerStep</c> 不会让帧号除零或倒退。</summary>
+        private float StepFrames => Math.Max(0.0001f, spec.FramesPerStep);
 
         /// <summary>回到第一帧重新播。</summary>
         public void Restart()
@@ -72,8 +75,7 @@ namespace Polaris.Magic.Runtime
 
         private void UpdateFrame()
         {
-            float step = Math.Max(0.0001f, spec.FramesPerStep);
-            int frame = (int)(elapsedFrames / step);
+            int frame = (int)(elapsedFrames / StepFrames);
 
             if (frame >= frameCount)
             {

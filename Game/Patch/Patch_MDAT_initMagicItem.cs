@@ -1,7 +1,6 @@
 using System;
 using HarmonyLib;
 using nel;
-using Polaris.Magic.Runtime;
 using XX;
 
 namespace Polaris.Magic.Game.Patch

@@ -18,8 +18,6 @@ namespace Polaris.Magic.Runtime
 
         private readonly List<Entry> draining = new List<Entry>();
 
-        internal int Count => draining.Count;
-
         /// <summary>接手一个已经请求取消的实例。已经结束的实例直接释放，不进泵。</summary>
         internal void Adopt(MagicRuntimeInstance instance)
         {

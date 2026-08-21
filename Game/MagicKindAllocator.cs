@@ -36,8 +36,6 @@ namespace Polaris.Magic.Game
             filePath = Path.Combine(stateDirectory, FileName);
         }
 
-        internal IReadOnlyDictionary<string, int> Assignments => assigned;
-
         /// <summary>读入已有映射。文件不存在是正常的首次启动；文件坏了只跳过坏行，不清空整张表。</summary>
         internal void Load()
         {

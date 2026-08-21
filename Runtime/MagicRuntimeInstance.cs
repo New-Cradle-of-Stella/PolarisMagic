@@ -163,8 +163,6 @@ namespace Polaris.Magic.Runtime
             }
         }
 
-        internal bool IsCancellationRequested => cancellation.IsCancellationRequested;
-
         /// <summary>
         /// 最终清理。只在 Task 已经走完之后调用：把剩余等待全部取消、丢弃排队续体、
         /// 释放这次施法创建的全部对象与资源租约。幂等。

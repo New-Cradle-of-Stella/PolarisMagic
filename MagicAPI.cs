@@ -96,5 +96,4 @@ namespace Polaris.Magic
             return player?.Skill?.MagicSel;
         }
     }
-
 }

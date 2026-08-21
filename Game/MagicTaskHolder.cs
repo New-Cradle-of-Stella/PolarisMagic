@@ -22,8 +22,6 @@ namespace Polaris.Magic.Game
             this.container = container;
         }
 
-        internal MagicRegistration Registration => registration;
-
         public override bool run(MagicItem Mg, float fcnt) => MagicRuntimeHost.Run(registration, Mg, fcnt);
 
         /// <summary>

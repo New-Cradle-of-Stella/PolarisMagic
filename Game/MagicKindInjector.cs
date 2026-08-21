@@ -2,7 +2,6 @@ using System;
 using System.Globalization;
 using Better;
 using nel;
-using Polaris.Localization;
 using Polaris.Magic.Runtime;
 
 namespace Polaris.Magic.Game
