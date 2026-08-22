@@ -3,13 +3,10 @@ using nel;
 namespace Polaris.Magic.Game
 {
     /// <summary>
-    /// 一种自定义魔法在<b>一个</b> <c>MGContainer</c> 里的 holder。
-    ///
-    /// 每个容器一个实例，不做全局单例：holder 持有容器引用，而原版 <c>MGContainer.destruct</c> 会挨个
-    /// 调它字典里 holder 的 <c>destruct</c>——共享一个实例的话，先销毁的那张地图会把还活着的另一张
-    /// 地图的状态一起清掉。
-    ///
-    /// 正式态由中间层完全接管：原版只负责提供和回收 <c>MagicItem</c> 容器，不参与运行状态。
+    /// 一种自定义魔法在<b>一个</b> <c>MGContainer</c> 里的 holder，每个容器一个实例，不做全局单例：
+    /// holder 持有容器引用，原版 <c>MGContainer.destruct</c> 会挨个调 holder 的 <c>destruct</c>，
+    /// 共享实例会让先销毁的地图把另一张还活着的地图的状态一起清掉。正式态由中间层完全接管，
+    /// 原版只负责提供和回收 <c>MagicItem</c> 容器，不参与运行状态。
     /// </summary>
     internal sealed class MagicTaskHolder : MgFDHolder
     {

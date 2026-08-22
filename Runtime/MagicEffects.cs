@@ -4,11 +4,9 @@ using System.Collections.Generic;
 namespace Polaris.Magic.Runtime
 {
     /// <summary>
-    /// 一个特效的静态规格：一张精灵表加播放参数。
-    ///
-    /// 特效之所以走"先登记规格、再按 Id 挂载"，而不是让作者每次自己拼绘制回调：同一个特效通常被
-    /// 多个魔法复用，而纹理租约、帧推进和清理都必须跟着施法 Task 的生命周期走。规格集中登记一次，
-    /// 挂载点只剩一个字符串。
+    /// 一个特效的静态规格：一张精灵表加播放参数。特效走"先登记规格、再按 Id 挂载"而不是让作者
+    /// 每次自己拼绘制回调，因为同一个特效通常被多个魔法复用，纹理租约、帧推进和清理都要跟着
+    /// 施法 Task 的生命周期走。
     /// </summary>
     public sealed class MagicEffectSpec
     {
@@ -56,10 +54,9 @@ namespace Polaris.Magic.Runtime
     }
 
     /// <summary>
-    /// 特效规格注册表。模组在自己的启动代码里登记，魔法用 <c>magicObject.AttachEffect(id)</c> 取用。
-    ///
-    /// 只在注册期写、施法期读：注册发生在组件 Awake/Start 阶段的主线程上，之后这张表不再变动，
-    /// 因此施法路径上不需要加锁。
+    /// 特效规格注册表：模组在自己的启动代码里登记，魔法用 <c>magicObject.AttachEffect(id)</c> 取用。
+    /// 只在注册期写、施法期读，注册发生在组件 Awake/Start 阶段的主线程上，之后表不再变动，
+    /// 因此施法路径不需要加锁。
     /// </summary>
     public static class MagicEffects
     {

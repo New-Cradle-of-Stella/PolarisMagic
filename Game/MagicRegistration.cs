@@ -27,15 +27,11 @@ namespace Polaris.Magic.Game
         internal string EnumName { get; }
 
         /// <summary>
-        /// 显式 Notifier 模板。
-        ///
-        /// 必须自带一份：<c>MagicNotifiearData</c> 的构造器只硬编码复制原版那几种模板，而它是在
-        /// <c>MGContainer</c> 构造时就建好的——等我们的 holder 注册进去时字典已经封板了。所以自定义
-        /// 魔法只能走 <c>GetForCaster(Mg, 模板)</c> 这个显式重载。
-        ///
-        /// 模板里放一个 <c>no_draw</c> 的空 hit：这一版的自定义魔法不用原版 Ray 发布伤害，
-        /// 表现和判定都由作者 Task 自己做；但 <c>Mn</c> 必须非 null 且 <c>_0</c> 可用，
-        /// 否则原版 <c>MagicItem.run</c> 里读 Notifier 的分支会直接 NRE。
+        /// 显式 Notifier 模板，必须自带一份：<c>MagicNotifiearData</c> 的构造器只硬编码复制原版模板，
+        /// 且在 <c>MGContainer</c> 构造时就已封板，自定义魔法只能走 <c>GetForCaster(Mg, 模板)</c>
+        /// 这个显式重载。模板里放一个 <c>no_draw</c> 的空 hit，因为自定义魔法的表现和判定都由作者
+        /// Task 自己做，但 <c>Mn</c> 必须非 null 且 <c>_0</c> 可用，否则原版 <c>MagicItem.run</c>
+        /// 会直接 NRE。
         /// </summary>
         internal MagicNotifiear NotifierTemplate { get; }
 

@@ -6,14 +6,10 @@ using XX;
 namespace Polaris.Magic.Game.Patch
 {
     /// <summary>
-    /// 自定义魔法的初始化必须整段接管 <c>MDAT.initMagicItem</c>，不能只往 MKind/选择器里加个数字。
-    ///
-    /// 原因是原版那个 <c>switch</c> 的 default 分支会强行给未知 kind 打上 <c>IMMEDIATE</c> 并清掉
-    /// <c>CHANTED</c>，而"准备圆"的条件恰恰是"非 IMMEDIATE 且 casttime != 0"——落进 default 就等于
-    /// 绕过咏唱直接释放，咏唱时间、暂存 MP 和释放动作全都不会发生。
-    ///
-    /// Prefix 跳过原方法之后，原方法在类型分派前做的那几步重置、以及方法末尾的谜题魔法覆盖，
-    /// 都得自己补上：池对象不重置会继承上一代施法的数值。
+    /// 自定义魔法的初始化必须整段接管 <c>MDAT.initMagicItem</c>，不能只往 MKind/选择器里加个数字：
+    /// 原版 <c>switch</c> 的 default 分支会强行给未知 kind 打上 <c>IMMEDIATE</c> 并清掉
+    /// <c>CHANTED</c>，导致绕过咏唱直接释放。Prefix 跳过原方法后，原方法在类型分派前的重置、以及
+    /// 末尾的谜题魔法覆盖都得自己补上，否则池对象会继承上一代施法的数值。
     /// </summary>
     [HarmonyPatch(typeof(MDAT), nameof(MDAT.initMagicItem))]
     internal static class Patch_MDAT_initMagicItem

@@ -7,11 +7,10 @@ using Polaris.Magic.Runtime;
 namespace Polaris.Magic.Game
 {
     /// <summary>
-    /// 施法实例的总表：把原版 <c>MagicItem</c> 映射到中间层实例，并驱动它们的 Tick。
-    ///
-    /// <c>MagicItem</c> 是池化对象，会在换地图后被下一代施法复用，而 <c>MGContainer.clear</c> 还会把
-    /// <c>id</c> 计数器归零。所以这里的身份判定用"同一个对象引用 + 同一个 id"两条一起（见
-    /// <see cref="MagicRuntimeInstance.OwnsItem"/>）；只认对象引用会把复用后的新实例当成旧实例。
+    /// 施法实例的总表：把原版 <c>MagicItem</c> 映射到中间层实例，并驱动它们的 Tick；
+    /// <c>MagicItem</c> 是池化对象，换地图后会被下一代施法复用，而 <c>MGContainer.clear</c> 还会把
+    /// <c>id</c> 计数器归零。所以身份判定用"同一个对象引用 + 同一个 id"两条一起（见
+    /// <see cref="MagicRuntimeInstance.OwnsItem"/>），只认引用会把复用后的新实例当成旧实例。
     /// </summary>
     internal static class MagicRuntimeHost
     {
@@ -71,10 +70,9 @@ namespace Polaris.Magic.Game
         }
 
         /// <summary>
-        /// 原版实体被结束（击杀、切图、原版自己回收）。
-        ///
-        /// Task 可能还停在某个 await 上，它的 <c>finally</c> 还没跑。这里请求取消并把实例交给取消泵：
-        /// 之后不再有 holder 的 Tick，只有泵能把 <c>finally</c> 推完并释放资源。
+        /// 原版实体被结束（击杀、切图、原版自己回收）时，Task 可能还停在某个 await 上，
+        /// <c>finally</c> 还没跑。这里请求取消并把实例交给取消泵，之后不再有 holder 的 Tick，
+        /// 只有泵能把 <c>finally</c> 推完并释放资源。
         /// </summary>
         internal static void OnKilled(MagicItem item)
         {

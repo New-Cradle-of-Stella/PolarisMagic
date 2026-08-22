@@ -6,13 +6,10 @@ using Polaris.Magic.Runtime;
 namespace Polaris.Magic.Game
 {
     /// <summary>
-    /// 往每个 <c>MGContainer</c> 的 holder 字典里装自定义 holder。
-    ///
-    /// 原版没有公开的注册入口：<c>OHoldFD</c> 是 private readonly 字典，而公开的
-    /// <c>initFunc</c>/<c>GetHoldFD</c> 都假定键已经存在。这里直接写那张原字典（靠 Krafs.Publicizer
-    /// 拿到访问权），而不是自建旁路字典再 patch 两个访问器——写进原字典之后，
-    /// <c>MGContainer.destruct</c> 会自然调到我们 holder 的 <c>destruct</c>，手杖 listener、再次施法
-    /// 和销毁路径也都不需要额外处理。
+    /// 往每个 <c>MGContainer</c> 的 holder 字典里装自定义 holder；原版没有公开注册入口，
+    /// <c>OHoldFD</c> 是 private 字典，公开的 <c>initFunc</c>/<c>GetHoldFD</c> 都假定键已存在。
+    /// 这里靠 Krafs.Publicizer 直接写那张原字典而非自建旁路字典，这样 <c>MGContainer.destruct</c>、
+    /// 再次施法和销毁路径都不需要额外处理。
     /// </summary>
     internal static class MagicHolderInstaller
     {

@@ -10,11 +10,10 @@ using XX;
 namespace Polaris.Magic.Runtime
 {
     /// <summary>
-    /// 中间层的场景对象：一个地图坐标下的位置/朝向/缩放，外加若干挂载的图片与特效。
-    ///
-    /// 对象归当前施法所有。Task 结束（完成、取消或异常）时统一清理，作者也可以提前
-    /// <see cref="Dispose"/>。绘制走 PolarisCore 的 Drawing，生命周期设为 Map：万一中间层自己漏了
-    /// 一次清理，切图时也不会有绘制残留留在下一张地图上。
+    /// 中间层的场景对象：一个地图坐标下的位置/朝向/缩放，外加若干挂载的图片与特效，归当前施法所有。
+    /// Task 结束（完成、取消或异常）时统一清理，作者也可以提前 <see cref="Dispose"/>；绘制走
+    /// PolarisCore 的 Drawing，生命周期设为 Map，即便中间层自己漏了一次清理，切图时也不会留下
+    /// 绘制残留。
     /// </summary>
     public sealed class MagicObject : IDisposable, IMapDrawTarget
     {
@@ -161,15 +160,11 @@ namespace Polaris.Magic.Runtime
         // ── Drawing 跟随协议 ────────────────
 
         /// <summary>
-        /// <see cref="IMapDrawTarget"/> 的实现：让别人的地图 Drawing Surface（另一个魔法对象的、
-        /// PolarisMap 的、模组自己建的）跟着这个魔法对象跑。显式实现，不进
-        /// <see cref="MagicObject"/> 自己的公共表面：作者要读坐标用 <see cref="Position"/> 就行，
-        /// 这个重载只是给跟随方看的。
-        ///
-        /// 已 <see cref="Dispose"/> 后返回 <c>false</c>，由跟随方按
-        /// <see cref="MapTargetLostBehavior"/> 处置——魔法对象跟着施法死，跟随方往往比它活得久，
-        /// 所以这里必须给出失效信号而不是继续汇报最后一个坐标。
-        /// <see cref="Active"/> 关掉只代表本对象不绘制，坐标仍然有效，不会把跟随方一起隐掉。
+        /// <see cref="IMapDrawTarget"/> 的实现：让别人的地图 Drawing Surface 跟着这个魔法对象跑，
+        /// 显式实现以免进入 <see cref="MagicObject"/> 自己的公共表面，作者读坐标继续用
+        /// <see cref="Position"/>。已 <see cref="Dispose"/> 后返回 <c>false</c> 而不是汇报最后坐标，
+        /// 因为跟随方往往比魔法对象活得久，需要明确的失效信号；<see cref="Active"/> 关掉只影响绘制，
+        /// 不影响坐标有效性。
         /// </summary>
         bool IMapDrawTarget.TryGetMapPosition(out DrawPoint position)
         {

@@ -9,11 +9,8 @@ namespace Polaris.Magic.Authoring
 {
     /// <summary>
     /// <c>.pmagic</c> 读不下去时抛这个：XML 坏了、不是 <c>Magic</c> 根、有认不出来的元素/属性、
-    /// 某个数值不是数值，或者格式版本比本工具新。
-    ///
-    /// 只有这一个异常，没有错误码体系——<c>.pmagic</c> 是一张十来个字段的属性表，不是编程语言。
-    /// 编辑器把这句话显示在顶部并只读打开，生成器把这句话交给
-    /// <c>IVsGeneratorProgress.GeneratorError</c>，跟仓库里其它几个生成器一个样。
+    /// 数值不合法，或格式版本过新。只有这一个异常，没有错误码体系，因为 <c>.pmagic</c>
+    /// 只是一张十来个字段的属性表，不是编程语言。
     /// </summary>
     public sealed class MagicFormatException : Exception
     {
@@ -40,15 +37,10 @@ namespace Polaris.Magic.Authoring
     }
 
     /// <summary>
-    /// <c>.pmagic</c> 的内存模型与规范 XML 读写。
-    ///
-    /// 这个文件被 PolarisTools 以 <c>Compile</c> 链接进 VS 扩展编译，因此只允许依赖 BCL：
-    /// 不引用 Unity、BepInEx、Harmony、原版程序集，也不引用 Visual Studio 或 WPF。
-    /// 编辑器存盘与生成器读取走的是同一段解析和同一份规范写法，两侧不可能对同一份文件有不同结论。
-    ///
-    /// 缺属性不算错误：可选属性取 <c>MKind</c> 的字段默认值，必需属性取零值，编辑器把它们标上星号
-    /// 并在没填时提示——文件本来就总是由编辑器写出，写出的规范 XML 一定带全部属性。
-    /// 真正读不下去的情况才抛 <see cref="MagicFormatException"/>。
+    /// <c>.pmagic</c> 的内存模型与规范 XML 读写；因为被 PolarisTools 链接进 VS 扩展编译，只能依赖
+    /// BCL，不引用 Unity、BepInEx、Harmony、原版程序集或 Visual Studio、WPF。
+    /// 编辑器存盘与生成器读取共用同一套解析和写法，缺属性时取默认值而非报错，只有真正读不下去时
+    /// 才抛 <see cref="MagicFormatException"/>。
     /// </summary>
     public sealed class MagicDefinitionDocument
     {

@@ -7,10 +7,9 @@ using Polaris.Magic.Definitions;
 namespace Polaris.Magic.Runtime
 {
     /// <summary>
-    /// 作者能看见的全部运行期入口。所有成员都是中间层包装：这里没有 <c>MagicItem</c>、
+    /// 作者能看见的全部运行期入口，所有成员都是中间层包装：这里没有 <c>MagicItem</c>、
     /// <c>MGContainer</c>、holder、<c>phase</c> 或 <c>t</c>，也没有拿到原版对象的逃生口。
-    ///
-    /// 每次施法一个 Context 实例，与 Token 和 code-behind 实例一一对应；并发施法之间互相隔离。
+    /// 每次施法一个 Context 实例，与 Token 和 code-behind 实例一一对应，并发施法之间互相隔离。
     /// </summary>
     public sealed class MagicRuntimeContext
     {

@@ -4,12 +4,10 @@ using System.Collections.Generic;
 namespace Polaris.Magic.Runtime
 {
     /// <summary>
-    /// 组件级的取消泵。
-    ///
-    /// 原版实体被外部结束（击杀、切图、组件关闭）之后就不再有 holder 的 Tick 了，但作者的
-    /// <c>finally</c> 里往往还有一段 <c>await</c> 之后才跑完的清理。这里接手继续每帧推进这些实例，
-    /// 直到它们的 Task 真正结束，然后释放。没有这一层，取消之后的 <c>finally</c> 会永远停在
-    /// 某个 await 上，创建出来的对象也就永远不会被回收。
+    /// 组件级的取消泵：原版实体被外部结束（击杀、切图、组件关闭）后就不再有 holder 的 Tick 了，
+    /// 但作者的 <c>finally</c> 里往往还有一段 <c>await</c> 之后才跑完的清理。这里接手继续每帧推进
+    /// 这些实例直到 Task 真正结束再释放，否则 <c>finally</c> 会永远停在某个 await 上，对象也就
+    /// 永远不会被回收。
     /// </summary>
     internal sealed class MagicCancellationPump
     {

@@ -1,10 +1,9 @@
 namespace Polaris.Magic.Runtime
 {
     /// <summary>
-    /// 一次施法自己的时钟。单位是原版的"帧"（<c>fcnt</c>），不是秒：原版魔法的全部数值都按帧写死，
-    /// 换成秒会让作者在两套单位之间来回换算。
-    ///
-    /// 时钟只在 holder 每 Tick 推进一次，作者读到的值在整个 Tick 内是稳定的。
+    /// 一次施法自己的时钟，单位是原版的"帧"（<c>fcnt</c>）而不是秒：原版魔法的全部数值都按帧写死，
+    /// 换成秒会让作者在两套单位之间来回换算。时钟只在 holder 每 Tick 推进一次，作者读到的值在整个
+    /// Tick 内是稳定的。
     /// </summary>
     public sealed class MagicClock
     {

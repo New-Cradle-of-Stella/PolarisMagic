@@ -3,13 +3,9 @@ using System.Text;
 namespace Polaris.Magic.Authoring
 {
     /// <summary>
-    /// <c>.pmagic.cs</c> 里那一个作者回调的签名契约，以及首次创建时写入的骨架文本。
-    ///
-    /// 这份契约必须两侧字字一致：生成的 <c>.pmagic.g.cs</c> 要在同一个 partial 类里直接引用
-    /// <see cref="RunMethodName"/> 的方法组，工具侧又要靠同一份签名判断作者文件里的方法算不算数
-    /// （PMAG1302）。抄成两份就会出现“编辑器说签名对、编译期说找不到方法”。
-    ///
-    /// 同样只依赖 BCL：这个文件被 PolarisTools 链接进 VS 扩展编译。
+    /// <c>.pmagic.cs</c> 里作者回调的签名契约，以及首次创建时写入的骨架文本；生成的
+    /// <c>.pmagic.g.cs</c> 与工具侧都靠同一份签名判断方法是否有效（PMAG1302），两边必须字字一致。
+    /// 同样只依赖 BCL，因为这个文件会被 PolarisTools 链接进 VS 扩展编译。
     /// </summary>
     public static class MagicCodeBehindContract
     {
@@ -66,13 +62,8 @@ namespace Polaris.Magic.Authoring
         }
 
         /// <summary>
-        /// 作者回调的骨架。
-        ///
-        /// 骨架里只有一个空白 Task，不带任何示例逻辑：这个 Task 存活就代表魔法在运行，作者要写的是
-        /// "魔法这一生做什么"，起手不该是一段需要先读懂再删掉的示例（建对象、开 while、判断取消）。
-        ///
-        /// 不写 <c>async</c>：空的 <c>async</c> 方法体会报 CS1998，新建一个魔法就先送一条警告不合适。
-        /// 作者写下第一个 <c>await</c> 时编译器会直接提示补 <c>async</c>，而签名检查不看这个修饰符。
+        /// 作者回调的骨架：只有一个空白 Task，不写示例逻辑，避免作者需要先读懂再删掉。
+        /// 不写 <c>async</c>，因为空方法体会报 CS1998；作者写下第一个 <c>await</c> 时编译器会提示补上。
         /// </summary>
         public static string BuildRunMethod(string indent)
         {

@@ -9,14 +9,10 @@ using Polaris.Magic.Runtime;
 namespace Polaris.Magic.Game
 {
     /// <summary>
-    /// 字符串 Id ↔ 数字 <c>MGKIND</c> 的分配与持久化。
-    ///
-    /// 为什么必须持久化：玩家存档里存的是数字 <c>ushort</c>（<c>MagicSelector.writeBinaryTo</c>），
-    /// 不是字符串 Id。如果每次启动按程序集加载顺序重新编号，玩家上次学会的魔法下次进游戏就会变成
-    /// 另一种魔法，或者干脆对不上而被静默丢弃。因此映射一旦分配就写进磁盘，之后只增不改。
-    ///
-    /// 登记区固定 30000–39999：原版枚举 14011–50000 之间是空档（见魔法系统技术文档 §21.4），
-    /// 而 ID 又必须 ≤ 65535 才能进存档。启动时仍然逐个核对原版枚举与 MKind 字典，不假定空档一直空着。
+    /// 字符串 Id ↔ 数字 <c>MGKIND</c> 的分配与持久化：玩家存档里存的是数字 <c>ushort</c>
+    /// （<c>MagicSelector.writeBinaryTo</c>），重新编号会让存档里的魔法错位或被丢弃，因此映射
+    /// 一旦分配就写进磁盘，只增不改。登记区固定 30000–39999，落在原版枚举的空档内且不超过存档
+    /// 要求的 65535，启动时仍逐个核对原版枚举与 MKind 字典，不假定空档一直空着。
     /// </summary>
     internal sealed class MagicKindAllocator
     {

@@ -7,12 +7,10 @@ using Polaris.Magic.Runtime;
 namespace Polaris.Magic.Game
 {
     /// <summary>
-    /// 往原版 <c>MKind</c> 表里注入自定义魔法的基础数据。
-    ///
-    /// 时机有硬约束：必须早于 <c>MagicSelector.readBinaryFrom</c>。读档时找不到对应 MKind 的记录会被
-    /// <b>静默跳过</b>，玩家已经学会的魔法就这么没了，而且不会有任何报错。所以注入挂在
-    /// <c>MKind.reloadKindDataScript</c> 的 Postfix 上（此时原字典和小图标序列都已就绪），
-    /// 读档补丁再兜一次底。
+    /// 往原版 <c>MKind</c> 表里注入自定义魔法的基础数据，时机必须早于
+    /// <c>MagicSelector.readBinaryFrom</c>：读档时找不到对应记录会被<b>静默跳过</b>，玩家已学会的
+    /// 魔法会无声消失。因此注入挂在 <c>MKind.reloadKindDataScript</c> 的 Postfix 上（此时原字典和
+    /// 小图标序列已就绪），读档补丁再兜一次底。
     /// </summary>
     internal static class MagicKindInjector
     {
@@ -56,9 +54,8 @@ namespace Polaris.Magic.Game
 
         private static MKind BuildKind(MagicRegistration registration, BDic<MGKIND, MKind> table)
         {
-            // index 参数会同时被写进 icon_index。数字 kind 查不到自己的图标资源，因此先借一个原版条目的
-            // 图标下标：原版画大图标是 MTR.AMagicIconL[icon_index]，下标非法会直接越界，
-            // 而"图标长得像火球"远好过"一打开魔法菜单就崩"。模组要专属图标需要另外扩展图标资源。
+            // index 参数会同时写进 icon_index：数字 kind 查不到自己的图标资源，因此借用原版条目的
+            // 下标，避免 MTR.AMagicIconL[icon_index] 越界崩溃。模组要专属图标需要另外扩展图标资源。
             MKind donor = FindIconDonor(table);
             int iconIndex = donor?.icon_index ?? 0;
 
@@ -105,13 +102,11 @@ namespace Polaris.Magic.Game
         }
 
         /// <summary>
-        /// 菜单名与说明。原版按 <c>Mag_title_&lt;数字&gt;</c> / <c>Mag_desc_&lt;数字&gt;</c> 查表，而
-        /// <c>MKind.localized_title_</c> 那两个字段会被 <c>refineAllLanguageCache</c> 和
-        /// <c>MagicSelector.newGame</c> 清掉，直接填字段留不住。
-        ///
-        /// 因此走 Polaris 的本地化 resolver：它挂在 <c>TX.Get</c> 上，语言刷新多少次都还在。
-        /// 用 resolver 而不是内置表，是为了让模组自己用 <c>PolarisAPI.Localization.Register</c>
-        /// 登记的正式译名优先——内置表比 resolver 链先查。
+        /// 菜单名与说明：原版按 <c>Mag_title_&lt;数字&gt;</c> / <c>Mag_desc_&lt;数字&gt;</c> 查表，但
+        /// <c>MKind.localized_title_</c> 字段会被 <c>refineAllLanguageCache</c> 和
+        /// <c>MagicSelector.newGame</c> 清掉，直接填字段留不住。因此走 Polaris 的本地化 resolver
+        /// （挂在 <c>TX.Get</c> 上，语言刷新后仍在），这样模组用 <c>PolarisAPI.Localization.Register</c>
+        /// 登记的正式译名能优先于内置表。
         /// </summary>
         private static void RegisterMenuText(MagicRegistration registration)
         {

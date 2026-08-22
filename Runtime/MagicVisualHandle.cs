@@ -5,11 +5,9 @@ using Polaris.Drawing;
 namespace Polaris.Magic.Runtime
 {
     /// <summary>
-    /// 挂在 <see cref="MagicObject"/> 上的一个可视件的公共部分。
-    ///
-    /// 句柄归当前施法所有：Task 结束时统一清理，也可以提前 <see cref="Dispose"/>。
-    /// <see cref="Dispose"/> 是幂等的，取消后仍然允许调用——<c>finally</c> 里的清理不该因为
-    /// "已经取消了"而失败。
+    /// 挂在 <see cref="MagicObject"/> 上的一个可视件的公共部分，句柄归当前施法所有：Task 结束时
+    /// 统一清理，也可以提前 <see cref="Dispose"/>。<see cref="Dispose"/> 是幂等的，取消后仍然
+    /// 允许调用，<c>finally</c> 里的清理不该因为"已经取消了"而失败。
     /// </summary>
     public abstract class MagicVisualHandle : IDisposable
     {

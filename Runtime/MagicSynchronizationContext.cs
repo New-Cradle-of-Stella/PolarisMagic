@@ -5,10 +5,9 @@ using System.Threading;
 namespace Polaris.Magic.Runtime
 {
     /// <summary>
-    /// 一次施法专属的同步上下文。作者 <c>await</c> 的续体全部落进这里排队，由 holder 在游戏主线程
-    /// 逐个执行——这就是"续体一定回到主线程"的实现方式，作者不需要自己 marshal。
-    ///
-    /// 每个施法实例一个实例：并发施法的续体队列互不影响，一个魔法的续体抛异常也不会打断别人的。
+    /// 一次施法专属的同步上下文：作者 <c>await</c> 的续体全部落进这里排队，由 holder 在游戏主线程
+    /// 逐个执行，这就是"续体一定回到主线程"的实现方式，作者不需要自己 marshal。每个施法实例一个
+    /// 实例，并发施法的续体队列互不影响，一个魔法的续体抛异常也不会打断别人的。
     /// </summary>
     internal sealed class MagicSynchronizationContext : SynchronizationContext
     {
